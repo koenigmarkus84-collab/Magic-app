@@ -3,14 +3,17 @@ import pandas as pd
 import openai
 import json
 
+# App Layout Konfiguration
 st.set_page_config(page_title="Magic Commander Builder", layout="wide")
 
 st.title("🧙‍♂️ Magic Commander Deck Builder")
 st.write("Lade deine angereicherte Sammlung hoch, um deinen Commander zu wählen.")
 
+# Datei-Upload-Feld
 uploaded_file = st.file_uploader("master_collection.csv hochladen", type=["csv"])
 
 if uploaded_file is not None:
+    # Daten einlesen
     df = pd.read_csv(uploaded_file)
     commanders = df[df['Is Legendary'] == True]
     
@@ -37,7 +40,7 @@ if uploaded_file is not None:
         lands = legal_pool[legal_pool['Name'].isin(basic_lands)]
         pool_singleton = pd.concat([non_lands, lands])
 
-        st.success(f"Dein legaler Kartenpool: {len(pool_singleton)} Karten.")
+        st.success(f"Dein legaler Kartenpool: {len(pool_singleton)} Karten aus deiner Sammlung passen zu diesem Commander.")
         
         st.subheader("2. KI-Deck generieren")
         api_key = st.text_input("OpenAI API-Key:", type="password")
@@ -78,22 +81,19 @@ if uploaded_file is not None:
                         response_format={ "type": "json_object" }
                     )
                     
-                                        result = json.loads(response.choices[0].message.content)
+                    result = json.loads(response.choices[0].message.content)
                     
                     st.write("### Strategie")
                     st.write(result.get("strategy", ""))
                     
                     decklist = result.get("decklist", [])
                     
-                    # Zeige die Liste optisch etwas schöner an
-                    st.write("### Deine Deckliste")
+                    st.write(f"### Deine Deckliste ({len(decklist)} Karten)")
                     st.dataframe(pd.DataFrame({"Kartenname": decklist}))
                     
-                    # -----------------------------------------
-                    # NEU: Export-Funktion für ManaBox
-                    # -----------------------------------------
+                    # ManaBox Export
                     if decklist:
-                        # Füge "1 " vor jeden Kartennamen hinzu für das korrekte Import-Format
+                        # Füge "1 " vor jeden Kartennamen hinzu
                         manabox_format = [f"1 {card}" for card in decklist]
                         # Füge den Commander noch als erste Karte hinzu
                         manabox_format.insert(0, f"1 {commander_name}")
