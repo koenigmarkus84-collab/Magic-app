@@ -34,7 +34,7 @@ if uploaded_file is not None:
         df['Legal'] = df['Color Identity'].apply(lambda x: is_legal(x, cmd_colors))
         legal_pool = df[df['Legal'] == True]
         
-        # Singleton & Standardländer
+        # Singleton & Standardländer (Doppelte Karten aus der Sammlung filtern)
         basic_lands = ["Plains", "Island", "Swamp", "Mountain", "Forest"]
         non_lands = legal_pool[~legal_pool['Name'].isin(basic_lands)].drop_duplicates(subset=['Name'])
         lands = legal_pool[legal_pool['Name'].isin(basic_lands)]
@@ -87,16 +87,72 @@ if uploaded_file is not None:
                     st.write(result.get("strategy", ""))
                     
                     decklist = result.get("decklist", [])
-                    
                     st.write(f"### Deine Deckliste ({len(decklist)} Karten)")
-                    st.dataframe(pd.DataFrame({"Kartenname": decklist}))
                     
-                    # ManaBox Export
+                    # -----------------------------------------------------
+                    # NEU: Das aufgeräumte 3-Spalten-Layout nach Kartentyp
+                    # -----------------------------------------------------
+                    
+                    # Generierte Karten mit den CSV-Metadaten matchen
+                    deck_df = pool_singleton[pool_singleton['Name'].isin(decklist)]
+                    
+                    def get_main_type(type_line):
+                        t = str(type_line).lower()
+                        if 'land' in t: return 'Länder'
+                        elif 'creature' in t: return 'Kreaturen'
+                        elif 'artifact' in t: return 'Artefakte'
+                        elif 'enchantment' in t: return 'Verzauberungen'
+                        elif 'planeswalker' in t: return 'Planeswalker'
+                        elif 'instant' in t: return 'Instants'
+                        elif 'sorcery' in t: return 'Sorceries'
+                        else: return 'Sonstiges'
+                    
+                    deck_df['Main Type'] = deck_df['Type Line'].apply(get_main_type)
+                    
+                    # 3 Spalten erstellen
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        creatures = deck_df[deck_df['Main Type'] == 'Kreaturen']
+                        st.markdown(f"#### Kreaturen ({len(creatures)})")
+                        st.dataframe(creatures[['Name', 'CMC']].sort_values('CMC'), hide_index=True)
+                        
+                        planeswalkers = deck_df[deck_df['Main Type'] == 'Planeswalker']
+                        if not planeswalkers.empty:
+                            st.markdown(f"#### Planeswalker ({len(planeswalkers)})")
+                            st.dataframe(planeswalkers[['Name', 'CMC']], hide_index=True)
+                            
+                    with col2:
+                        artifacts = deck_df[deck_df['Main Type'] == 'Artefakte']
+                        st.markdown(f"#### Artefakte ({len(artifacts)})")
+                        st.dataframe(artifacts[['Name', 'CMC']].sort_values('CMC'), hide_index=True)
+                        
+                        enchantments = deck_df[deck_df['Main Type'] == 'Verzauberungen']
+                        if not enchantments.empty:
+                            st.markdown(f"#### Verzauberungen ({len(enchantments)})")
+                            st.dataframe(enchantments[['Name', 'CMC']].sort_values('CMC'), hide_index=True)
+                            
+                    with col3:
+                        instants = deck_df[deck_df['Main Type'] == 'Instants']
+                        st.markdown(f"#### Instants ({len(instants)})")
+                        st.dataframe(instants[['Name', 'CMC']].sort_values('CMC'), hide_index=True)
+                        
+                        sorceries = deck_df[deck_df['Main Type'] == 'Sorceries']
+                        st.markdown(f"#### Sorceries ({len(sorceries)})")
+                        st.dataframe(sorceries[['Name', 'CMC']].sort_values('CMC'), hide_index=True)
+                        
+                        lands_df = deck_df[deck_df['Main Type'] == 'Länder']
+                        st.markdown(f"#### Länder ({len(lands_df)})")
+                        st.dataframe(lands_df[['Name']].sort_values('Name'), hide_index=True)
+
+                    st.divider() # Optische Trennlinie
+                    
+                    # -----------------------------------------------------
+                    # Der ManaBox Export
+                    # -----------------------------------------------------
                     if decklist:
-                        # Füge "1 " vor jeden Kartennamen hinzu
                         manabox_format = [f"1 {card}" for card in decklist]
-                        # Füge den Commander noch als erste Karte hinzu
-                        manabox_format.insert(0, f"1 {commander_name}")
+                        manabox_format.insert(0, f"1 {commander_name}") # Commander hinzufügen
                         
                         export_text = "\n".join(manabox_format)
                         
