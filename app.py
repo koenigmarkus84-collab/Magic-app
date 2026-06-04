@@ -78,12 +78,34 @@ if uploaded_file is not None:
                         response_format={ "type": "json_object" }
                     )
                     
-                    result = json.loads(response.choices[0].message.content)
+                                        result = json.loads(response.choices[0].message.content)
                     
                     st.write("### Strategie")
                     st.write(result.get("strategy", ""))
+                    
+                    decklist = result.get("decklist", [])
+                    
+                    # Zeige die Liste optisch etwas schöner an
                     st.write("### Deine Deckliste")
-                    st.write(result.get("decklist", []))
+                    st.dataframe(pd.DataFrame({"Kartenname": decklist}))
+                    
+                    # -----------------------------------------
+                    # NEU: Export-Funktion für ManaBox
+                    # -----------------------------------------
+                    if decklist:
+                        # Füge "1 " vor jeden Kartennamen hinzu für das korrekte Import-Format
+                        manabox_format = [f"1 {card}" for card in decklist]
+                        # Füge den Commander noch als erste Karte hinzu
+                        manabox_format.insert(0, f"1 {commander_name}")
+                        
+                        export_text = "\n".join(manabox_format)
+                        
+                        st.download_button(
+                            label="📥 Deck für ManaBox herunterladen (.txt)",
+                            data=export_text,
+                            file_name=f"{commander_name.replace(' ', '_')}_deck.txt",
+                            mime="text/plain"
+                        )
                     
                 except Exception as e:
                     st.error(f"Fehler bei der KI-Generierung: {e}")
